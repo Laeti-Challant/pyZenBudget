@@ -1,0 +1,18 @@
+# Environnement virtuel
+venv/
+.venv/
+env/
+
+# Données (pour la confidentialité de ton budget)
+data/
+
+# Python (fichiers de cache inutiles sur GitHub)
+__pycache__/
+*.pyc
+
+# VS Code (si tu veux garder tes réglages locaux pour toi)
+.vscode/
+
+# OS (fichiers système inutiles)
+.DS_Store
+Thumbs.db
