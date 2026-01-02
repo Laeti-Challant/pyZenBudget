@@ -1,0 +1,8 @@
+# requirements.txt
+
+# ===== Framework Web =====
+Django==6.0
+
+# ===== Traitement de données =====
+pandas==2.3.3
+openpyxl==3.1.5
