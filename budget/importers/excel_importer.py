@@ -45,6 +45,8 @@ class TransactionImporter:
 
         transactions = []
 
+        occurence_cache = {}
+
         for index, row in self.df.iterrows():
             try:
                 date_str = str(row["Date"])
@@ -54,8 +56,19 @@ class TransactionImporter:
                 # Parse la date
                 date = pd.to_datetime(date_str).date()
 
+                # création de la chaine de base (pour vérification des occurences)
+                base_string = f"{date}{label}{amount}"
+
+                if base_string in occurence_cache:
+                    occurence_cache[base_string] += 1
+                    occurence_count = occurence_cache[base_string]
+                    hash_string = f"{base_string}_{occurence_count}"
+                else:
+                    occurence_cache[base_string] = 0
+                    hash_string = base_string
+
                 # Crée un hash unique
-                hash_string = f"{date}{label}{amount}"
+
                 import_hash = hashlib.md5(hash_string.encode()).hexdigest()
 
                 transactions.append(
