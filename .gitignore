@@ -7,6 +7,9 @@ venv/
 .venv/
 env/
 
+# Variables d'environnement
+.env
+
 # Données sensibles
 data/raw/*
 data/processed/*
