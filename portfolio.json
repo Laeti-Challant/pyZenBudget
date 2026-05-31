@@ -1,0 +1,9 @@
+{
+  "visible": true,
+  "actif": true,
+  "termine": false,
+  "contexte": "personnel",
+  "screenshot": "",
+  "technologies": ["Python", "Django", "SQLite"],
+  "competences": ["REST API"]
+}
