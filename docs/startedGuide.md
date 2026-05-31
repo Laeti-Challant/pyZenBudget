@@ -14,13 +14,12 @@ il me permet de me replonger vite dans le projet.
 Le projet a démarré en MVT pour explorer Django. En attaquant les vues,
 j'ai constaté que la génération de templates ne me convenait pas.
 Décision : transformer le projet en API REST autonome, consommée par un front React
-développé dans un dépôt séparé. La logique métier (import, normalisation) ne change pas,
-seule la couche de présentation évolue.
-Conséquence sur ce document : la structure et la roadmap ne décrivent plus que l'API.
-Tout ce qui relève des écrans (assistant d'import, liste, validation) vit dans le dépôt du front.
+développé dans un dépôt séparé.
+La logique métier (import, normalisation) évolue également. Je vais mettre en place les analyses des entrées (totaux par catégorie et par période). Puis le budget avec donc un nouveau modèle et une migration. Viendront ensuite les règles de catégorisation et l'apprentissage.
+Les endpoints API ne viendront qu'une fois l'application fonctionnelle à un niveau personnel.
 
 Généralisation de la normalisation avec ajout de variable.
-La commande d'import reste un outil de dev, le mappuing configurable parl'utilisateur passera par l'API.
+La commande d'import reste un outil de dev, le mapping configurable par l'utilisateur passera par l'API.
 
 ---
 
@@ -287,7 +286,7 @@ pip freeze > requirements.txt
 - [x] Base de données SQLite configurée
 - [x] Système de migrations
 
-### ✅ Phase 2 : Import de données (EN COURS)
+### ✅ Phase 2 : Import de données (Terminé)
 
 - [x] Normalisation de fichiers Excel
   - [x] Lecture avec ligne de début configurable
@@ -299,13 +298,26 @@ pip freeze > requirements.txt
   - [x] Gestion des erreurs
 - [x] Commande Django `import_bank_file`
 - [x] Catégories de base créées
-- [ ] **Normaliseur paramétrable (prochaine tâche)**
+- [x] **Normaliseur paramétrable **
   - [x] Le normaliseur reçoit un mapping (ligne d'en-tête + correspondance des colonnes)
         au lieu de valeurs codées en dur
   - [x] Mise à jour de `import_bank_file` pour ajouter les options de mapping
   - [x] Test via `import_bank_file` avec un fichier bancaire
 
-### 🚧 Phase 3 : Interface web (À VENIR)
+### 🚧 Phase 3 : Logique métier (À VENIR)
+
+- [ ] Mettre en place les calculs de totaux sur des périodes et selon des catégories
+- [ ] **Mise en place des budgets**
+  - [ ] mise en place de la table
+  - [ ] migration
+- [ ] Complétion des categorisation_rules
+- [ ] **Mise en place de l'auto-apprentissage des categorisation_rules**
+  - [ ] Moteur qui applique les CategorizationRule à l'import
+  - [ ] Score de confiance
+  - [ ] Tri de la liste : transactions non catégorisées ou peu sûres renvoyées en tête
+  - [ ] Apprentissage : création/mise à jour d'une règle à chaque correction de l'utilisateur
+
+### 📅 Phase 4 : Interface web (À VENIR)
 
 > 📌 Remplace l'interface web en MVT initialement prévue (voir Journal de bord).
 > Les écrans (upload, liste, validation, dashboard) sont désormais dans le dépôt du front.
@@ -317,7 +329,7 @@ pip freeze > requirements.txt
 - [ ] Tester dans l'API navigable et Postman
 - [ ] (Authentification différée : mono-utilisateur pour l'instant, voir Phase 8)
 
-### 📅 Phase 4 : Import flexible (endpoints) (À VENIR)
+### 📅 Phase 5 : Import flexible (endpoints) (À VENIR)
 
 Expose le normaliseur paramétrable (Phase 2) via l'API, pour que n'importe quel client
 puisse importer un fichier en définissant son mapping.
@@ -326,22 +338,11 @@ puisse importer un fichier en définissant son mapping.
 - [ ] Endpoint d'import qui applique le mapping fourni par le client
 - [ ] Modèle `ImportProfile` pour mémoriser et réutiliser un mapping (banque récurrente)
 
-### 📅 Phase 5 : Catégories et sous-catégories (endpoints) (À VENIR)
+### 📅 Phase 6 : Catégories et sous-catégories (endpoints) (À VENIR)
 
 - [ ] Endpoints CRUD des catégories (hiérarchie parent/enfant)
 - [ ] Endpoint d'affectation d'une catégorie à une transaction (PATCH)
 - [ ] Liste des transactions : filtrage (date, catégorie, validation), pagination, recherche par libellé
-
-### 📅 Phase 6 : Catégorisation apprenante (À VENIR)
-
-Objectif : l'utilisateur vérifie et corrige les catégories, et celles que l'API ne sait pas
-affecter remontent en tête de liste.
-
-- [ ] Moteur qui applique les CategorizationRule à l'import
-- [ ] Score de confiance
-- [ ] Tri de la liste : transactions non catégorisées ou peu sûres renvoyées en tête
-- [ ] Apprentissage : création/mise à jour d'une règle à chaque correction de l'utilisateur
-- [ ] Endpoints de gestion des règles (liste, édition, suppression, statistiques)
 
 ### 📊 Phase 7 : Rapports et exports (endpoints) (À VENIR)
 
@@ -359,7 +360,7 @@ affecter remontent en tête de liste.
 - [ ] Documentation de l'API : schéma OpenAPI + Swagger (drf-spectacular), le contrat que les clients consultent
 - [ ] Authentification (JWT, multi-utilisateurs)
 - [ ] Gestion multi-comptes et devises
-- [ ] Objectifs budgétaires et notifications
+- [ ] Notifications de dépassement de budget
 - [ ] Migration vers PostgreSQL (production)
 - [ ] Déploiement (Railway/Render), nom de domaine, HTTPS/SSL, sauvegardes
 
