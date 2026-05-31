@@ -8,21 +8,29 @@ class ExcelNormalizer:
     Normalise un fichier Excel bancaire vers un format standard.
     """
 
-    def __init__(self, raw_file_path: str, start_row: int = 9):
+    def __init__(self, raw_file_path: str, date_column: str, debit_column: str, credit_column: str, label_column: str, start_row: int = 10):
         """
         Args:
             raw_file_path: Chemin vers le fichier brut
-            start_row: Ligne de début des données (0-indexed, donc 9 = ligne 10 Excel)
+            start_row: Ligne de début des données
+            date_column: Intitulé de la colonne comportant les dates
+            debit_column: Intitulé de la colonne comportant les dépenses
+            credit_column: Intitulé de la colonne comportant les crédits
+            label_column: Intitulé de la colonne comportant les libellés de chaque entrée
         """
         self.raw_file_path = Path(raw_file_path)
         self.start_row = start_row
+        self.date_column = date_column
+        self.debit_column = debit_column
+        self.credit_column = credit_column
+        self.label_column = label_column
         self.df = None
 
     def read_file(self) -> pd.DataFrame:
         """Lit le fichier Excel en sautant les lignes d'en-tête."""
         try:
             # skiprows=9 saute les 10 premières lignes (0 à 9)
-            self.df = pd.read_excel(self.raw_file_path, skiprows=self.start_row)
+            self.df = pd.read_excel(self.raw_file_path, skiprows=self.start_row -1)
             print(f"✓ Fichier lu : {len(self.df)} lignes")
             print(f"✓ Colonnes : {list(self.df.columns)}")
             return self.df
@@ -46,21 +54,21 @@ class ExcelNormalizer:
         df_normalized = self.df.copy()
 
         # 1. Normalise la date
-        df_normalized["Date"] = pd.to_datetime(
-            df_normalized["Date"],  # ← Adapte le nom de ta colonne
+        df_normalized[self.date_column] = pd.to_datetime(
+            df_normalized[self.date_column],
             dayfirst=True,  # Format français DD/MM/YYYY
         ).dt.strftime("%Y-%m-%d")
 
         # 2. Calcule le montant : Crédit - Débit
         # Les débits sont souvent positifs dans les fichiers bancaires
         # On les convertit en négatifs
-        debit = df_normalized["Débit euros"].fillna(0)  # ← Adapte le nom
-        credit = df_normalized["Crédit euros"].fillna(0)  # ← Adapte le nom
+        debit = df_normalized[self.debit_column].fillna(0)  
+        credit = df_normalized[self.credit_column].fillna(0)  
 
         df_normalized["Amount"] = credit - debit
 
         # 3. Renomme le libellé
-        df_normalized["Label"] = df_normalized["Libellé"]  # ← Adapte le nom
+        df_normalized["Label"] = df_normalized[self.label_column]
 
         # 4. Garde seulement les colonnes nécessaires
         df_normalized = df_normalized[["Date", "Label", "Amount"]]
