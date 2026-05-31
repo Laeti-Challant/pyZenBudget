@@ -7,12 +7,17 @@ Le projet se concentre sur l’analyse de fichiers bancaires (Excel / CSV),
 l’attribution de catégories et sous-catégories aux transactions,
 et la visualisation des données budgétaires.
 
+pyZenBudget est conçu comme une API REST autonome, pensée pour être consommée
+par différents clients (un front web, une app mobile ou un script).
+Le front est développé dans un dépôt séparé.
+
 ---
 
 ## 🎯 Objectifs du projet
 
 - Apprendre Python dans un contexte d’application web
 - Découvrir et pratiquer le framework Django
+- Concevoir une API REST avec Django REST Framework
 - Manipuler et analyser des données issues de fichiers bancaires
 - Mettre en place une logique métier de gestion budgétaire
 
@@ -23,6 +28,11 @@ et la visualisation des données budgétaires.
 Ce projet est développé progressivement, en parallèle d’une formation de Concepteur Développeur d’Applications.
 Il est travaillé de manière itérative, environ toutes les deux semaines,
 ce qui rend la documentation essentielle pour faciliter la reprise du projet.
+
+Le projet a démarré en MVT pour explorer Django. En attaquant les vues,
+j’ai constaté que la génération de templates ne me convenait pas.
+J’ai donc décidé de le transformer en API REST, consommée par un front développé à part.
+La logique métier (import, normalisation) reste inchangée, seule la couche de présentation évolue.
 
 ---
 
@@ -40,8 +50,9 @@ ce qui rend la documentation essentielle pour faciliter la reprise du projet.
 
 - Python
 - Django
+- Django REST Framework (API)
 - Pandas (pour le traitement des données)
-- Base de données relationnelle (SQLite / PostgreSQL – à définir)
+- Base de données relationnelle (SQLite)
 
 ---
 

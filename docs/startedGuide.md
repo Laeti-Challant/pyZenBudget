@@ -1,6 +1,23 @@
-# 💰 pyZenBudget - Documentation
+# 💰 pyZenBudget - Guide de suivi
 
-Application Django de gestion de budget personnel avec import automatique de fichiers bancaires et catégorisation intelligente.
+API Django (REST Framework) de gestion de budget personnel, avec import de fichiers bancaires
+et catégorisation intelligente. Le front est développé dans un dépôt séparé.
+Ce document me sert de carnet de suivi : comme j'avance par intermittence,
+il me permet de me replonger vite dans le projet.
+
+---
+
+## 🧭 Journal de bord
+
+### Mai 2026 : passage de MVT à une API
+
+Le projet a démarré en MVT pour explorer Django. En attaquant les vues,
+j'ai constaté que la génération de templates ne me convenait pas.
+Décision : transformer le projet en API REST autonome, consommée par un front React
+développé dans un dépôt séparé. La logique métier (import, normalisation) ne change pas,
+seule la couche de présentation évolue.
+Conséquence sur ce document : la structure et la roadmap ne décrivent plus que l'API.
+Tout ce qui relève des écrans (assistant d'import, liste, validation) vit dans le dépôt du front.
 
 ---
 
@@ -82,7 +99,8 @@ python manage.py runserver
 ### 5. Accéder à l'application
 
 - **Interface admin :** http://127.0.0.1:8000/admin/
-- **Application :** http://127.0.0.1:8000/
+- API (racine) : http://127.0.0.1:8000/api/
+- API navigable DRF : http://127.0.0.1:8000/api/ (interface fournie par DRF pour tester les endpoints)
 
 ---
 
@@ -100,9 +118,22 @@ python manage.py import_bank_file data/raw/export.xlsx --start-row 7
 
 ### Via l'interface admin
 
+L'admin Django sert à consulter et corriger les transactions (filtrer par date,
+catégorie, validation) et à en ajouter une manuellement. Par défaut, il ne permet pas
+d'importer un fichier bancaire.
+
 1. Aller sur http://127.0.0.1:8000/admin/budget/transaction/
-2. Consulter les transactions importées
-3. Filtrer par date, catégorie, etc.
+2. Consulter les transactions importées, filtrer, corriger
+3. Ajouter une transaction manuellement si besoin
+
+### Via le bouton d'import dans l'admin (à ajouter)
+
+Un bouton « Importer un fichier bancaire » sur la page des transactions, pour importer
+sans passer par le terminal. Il ouvre un formulaire (fichier + ligne de début) qui réutilise
+la même logique d'import que la commande.
+
+> Note : ce bouton est un confort côté admin, pour mon usage. L'import destiné aux clients
+> de l'API (front, script, etc.) passera par un endpoint dédié, voir Phase 4.
 
 ---
 
@@ -118,8 +149,8 @@ pyZenBudget/
 ├── config/                      # Configuration Django
 │   ├── __init__.py
 │   ├── asgi.py                 # Déploiement ASGI
-│   ├── settings.py             # Paramètres
-│   ├── urls.py                 # Routes principales
+│   ├── settings.py             # Paramètres (+ rest_framework, corsheaders)
+│   ├── urls.py                 # Routes principales (inclut les routes API)
 │   └── wsgi.py                 # Déploiement WSGI
 │
 ├── budget/                      # Application principale
@@ -127,8 +158,10 @@ pyZenBudget/
 │   ├── admin.py                # Interface d'administration
 │   ├── apps.py                 # Configuration de l'application
 │   ├── models.py               # Modèles de données
+│   ├── serializers.py          # À VENIR : sérialisation des modèles pour l'API
+│   ├── views.py                # ViewSets DRF (remplacent les vues MVT)
+│   ├── urls.py                 # À VENIR : router DRF de l'application
 │   ├── tests.py                # Tests
-│   ├── views.py                # Vues
 │   │
 │   ├── importers/              # Logique d'import
 │   │   ├── __init__.py
@@ -151,7 +184,7 @@ pyZenBudget/
 │   └── processed/              # Fichiers normalisés
 │
 └── docs/                        # Documentation
-    └── documentation.md
+    └── startedGuide.md          # Ce guide de suivi
 ```
 
 ---
@@ -178,6 +211,11 @@ pyZenBudget/
 - Pattern (mot-clé) → Catégorie
 - Score de confiance
 - Compteur d'utilisation
+
+### ImportProfile (prévu, Phase 4)
+
+- Mémorise un mapping de colonnes (ligne d'en-tête + correspondances)
+- Permet de réutiliser une configuration pour les exports récurrents d'une même banque
 
 ---
 
@@ -246,7 +284,7 @@ pip freeze > requirements.txt
 - [x] Base de données SQLite configurée
 - [x] Système de migrations
 
-### ✅ Phase 2 : Import de données (TERMINÉ)
+### ✅ Phase 2 : Import de données (EN COURS)
 
 - [x] Normalisation de fichiers Excel
   - [x] Lecture avec ligne de début configurable
@@ -258,75 +296,74 @@ pip freeze > requirements.txt
   - [x] Gestion des erreurs
 - [x] Commande Django `import_bank_file`
 - [x] Catégories de base créées
+- [ ] **Normaliseur paramétrable (prochaine tâche)**
+  - [ ] Le normaliseur reçoit un mapping (ligne d'en-tête + correspondance des colonnes)
+        au lieu de valeurs codées en dur
+  - [ ] Validation : les colonnes demandées existent bien dans le fichier
+  - [ ] Test via `import_bank_file` avec plusieurs mappings écrits à la main
+  - [ ] Note : ici on rend le moteur capable de consommer un mapping.
+        Le choix du mapping par l'utilisateur (upload, aperçu, clic) passe par l'API, voir Phase 4.
+- [ ] **Confort dev**
+  - [ ] Extraire la logique d'import dans une fonction réutilisable (commande + admin)
+  - [ ] Bouton « Importer un fichier bancaire » dans l'admin Django
 
-### 🚧 Phase 3 : Interface web (EN COURS)
+### 🚧 Phase 3 : Interface web (À VENIR)
 
-- [ ] Page d'upload de fichiers
-  - [ ] Formulaire d'upload Django
-  - [ ] Prévisualisation du fichier
-  - [ ] Configuration de la ligne de début
-- [ ] Liste des transactions
-  - [ ] Filtrage par date, catégorie, validation
-  - [ ] Pagination
-  - [ ] Recherche par libellé
-- [ ] Interface de catégorisation
-  - [ ] Validation manuelle des catégories
-  - [ ] Interface "swipe" ou sélection rapide
-  - [ ] Validation en batch
-- [ ] Dashboard basique
+> 📌 Remplace l'interface web en MVT initialement prévue (voir Journal de bord).
+> Les écrans (upload, liste, validation, dashboard) sont désormais dans le dépôt du front.
+
+- [ ] Installer et configurer Django REST Framework
+- [ ] Serializers des modèles (Category, Transaction, CategorizationRule)
+- [ ] ViewSets en lecture seule + router
+- [ ] Configurer CORS (django-cors-headers) pour autoriser les clients web
+- [ ] Tester dans l'API navigable et Postman
+- [ ] (Authentification différée : mono-utilisateur pour l'instant, voir Phase 8)
+
+### 📅 Phase 4 : Import flexible (endpoints) (À VENIR)
+
+Expose le normaliseur paramétrable (Phase 2) via l'API, pour que n'importe quel client
+puisse importer un fichier en définissant son mapping.
+
+- [ ] Endpoint d'upload qui renvoie un aperçu (lignes brutes + colonnes détectées)
+- [ ] Endpoint d'import qui applique le mapping fourni par le client
+- [ ] Modèle `ImportProfile` pour mémoriser et réutiliser un mapping (banque récurrente)
+
+### 📅 Phase 5 : Catégories et sous-catégories (endpoints) (À VENIR)
+
+- [ ] Endpoints CRUD des catégories (hiérarchie parent/enfant)
+- [ ] Endpoint d'affectation d'une catégorie à une transaction (PATCH)
+- [ ] Liste des transactions : filtrage (date, catégorie, validation), pagination, recherche par libellé
+
+### 📅 Phase 6 : Catégorisation apprenante (À VENIR)
+
+Objectif : l'utilisateur vérifie et corrige les catégories, et celles que l'API ne sait pas
+affecter remontent en tête de liste.
+
+- [ ] Moteur qui applique les CategorizationRule à l'import
+- [ ] Score de confiance
+- [ ] Tri de la liste : transactions non catégorisées ou peu sûres renvoyées en tête
+- [ ] Apprentissage : création/mise à jour d'une règle à chaque correction de l'utilisateur
+- [ ] Endpoints de gestion des règles (liste, édition, suppression, statistiques)
+
+### 📊 Phase 7 : Rapports et exports (endpoints) (À VENIR)
+
+- [ ] Endpoints d'agrégation (JSON consommé par le front pour les graphiques)
   - [ ] Total par catégorie (mois en cours)
   - [ ] Évolution mensuelle
   - [ ] Indicateurs clés (dépenses/revenus)
-
-### 📅 Phase 4 : Catégorisation intelligente (À VENIR)
-
-- [ ] Système de règles automatiques
-  - [ ] Création de règles depuis validation utilisateur
-  - [ ] Moteur de matching (mots-clés, regex)
-  - [ ] Priorisation des règles
-- [ ] Apprentissage progressif
-  - [ ] Détection de patterns récurrents
-  - [ ] Suggestions de règles
-  - [ ] Score de confiance évolutif
-- [ ] Interface de gestion des règles
-  - [ ] Liste des règles actives
-  - [ ] Édition/suppression
-  - [ ] Statistiques d'utilisation
-
-### 📊 Phase 5 : Rapports et visualisation (À VENIR)
-
-- [ ] Graphiques interactifs
-  - [ ] Chart.js ou Plotly
-  - [ ] Évolution par catégorie
-  - [ ] Répartition des dépenses (camembert)
-  - [ ] Tendances mensuelles/annuelles
 - [ ] Exports
   - [ ] Export Excel des données catégorisées
-  - [ ] Export PDF des rapports
   - [ ] Export CSV pour analyse externe
-- [ ] Tableaux de bord avancés
-  - [ ] Comparaison mois par mois
-  - [ ] Budgets prévisionnels
-  - [ ] Alertes de dépassement
+  - [ ] Export PDF des rapports
 
-### 🚀 Phase 6 : Fonctionnalités avancées (À VENIR)
+### 🚀 Phase 8 : Avancé et déploiement (À VENIR)
 
-- [ ] Gestion multi-comptes
-- [ ] Gestion des devises
-- [ ] Objectifs budgétaires
-- [ ] Notifications/alertes
-- [ ] API REST (pour app mobile future)
-- [ ] Authentification utilisateurs multiples
-- [ ] Thème sombre/clair
-
-### 🌐 Phase 7 : Déploiement (À VENIR)
-
+- [ ] Documentation de l'API : schéma OpenAPI + Swagger (drf-spectacular), le contrat que les clients consultent
+- [ ] Authentification (JWT, multi-utilisateurs)
+- [ ] Gestion multi-comptes et devises
+- [ ] Objectifs budgétaires et notifications
 - [ ] Migration vers PostgreSQL (production)
-- [ ] Configuration pour déploiement
-- [ ] Déploiement sur Railway/Render
-- [ ] Configuration du nom de domaine
-- [ ] HTTPS/SSL
-- [ ] Sauvegarde automatique des données
+- [ ] Déploiement (Railway/Render), nom de domaine, HTTPS/SSL, sauvegardes
 
 ---
 
@@ -381,6 +418,9 @@ python manage.py changepassword ton_username
 
 ### Format des fichiers Excel attendu
 
+> Avec le normaliseur paramétrable (Phase 2) et l'API (Phase 4), ces valeurs deviennent
+> configurables par le client. En attendant, l'import par commande suppose ce qui suit.
+
 - **Ligne de début :** 9 (configurable avec `--start-row`)
 - **Colonnes requises après normalisation :**
   - `Date` : Format français DD/MM/YYYY
@@ -398,6 +438,17 @@ python manage.py changepassword ton_username
 
 - Utilise un **compteur d'occurrence** pour accepter les vraies transactions identiques
 - Détecte les réimports via comparaison date+libellé+montant
+
+### CORS (API et clients sur des origines différentes)
+
+L'API et les clients web tournent sur des origines différentes (ports distincts en dev).
+Il faut donc installer et configurer `django-cors-headers` côté Django :
+
+```bash
+pip install django-cors-headers
+```
+
+Puis autoriser l'origine du client dans les settings (en développement uniquement).
 
 ---
 
@@ -429,6 +480,7 @@ Utiliser un fichier `.env` pour :
 ### Documentation
 
 - [Django Official Docs](https://docs.djangoproject.com/)
+- [Django REST Framework](https://www.django-rest-framework.org/)
 - [Pandas Documentation](https://pandas.pydata.org/docs/)
 - [Python DateUtil](https://dateutil.readthedocs.io/)
 
@@ -486,4 +538,4 @@ git merge feature/nom-fonctionnalite
 
 **Dernière mise à jour :** {{ date }}
 
-**Version :** 0.2.0 (Phase 2 terminée, Phase 3 en cours)
+**Version :** 0.3.0 (Phase 2 en finalisation, passage en API REST en cours)
