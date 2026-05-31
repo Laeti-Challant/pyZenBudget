@@ -19,6 +19,9 @@ seule la couche de présentation évolue.
 Conséquence sur ce document : la structure et la roadmap ne décrivent plus que l'API.
 Tout ce qui relève des écrans (assistant d'import, liste, validation) vit dans le dépôt du front.
 
+Généralisation de la normalisation avec ajout de variable.
+La commande d'import reste un outil de dev, le mappuing configurable parl'utilisateur passera par l'API.
+
 ---
 
 ## 🚀 Guide de démarrage rapide
@@ -297,15 +300,10 @@ pip freeze > requirements.txt
 - [x] Commande Django `import_bank_file`
 - [x] Catégories de base créées
 - [ ] **Normaliseur paramétrable (prochaine tâche)**
-  - [ ] Le normaliseur reçoit un mapping (ligne d'en-tête + correspondance des colonnes)
+  - [x] Le normaliseur reçoit un mapping (ligne d'en-tête + correspondance des colonnes)
         au lieu de valeurs codées en dur
-  - [ ] Validation : les colonnes demandées existent bien dans le fichier
-  - [ ] Test via `import_bank_file` avec plusieurs mappings écrits à la main
-  - [ ] Note : ici on rend le moteur capable de consommer un mapping.
-        Le choix du mapping par l'utilisateur (upload, aperçu, clic) passe par l'API, voir Phase 4.
-- [ ] **Confort dev**
-  - [ ] Extraire la logique d'import dans une fonction réutilisable (commande + admin)
-  - [ ] Bouton « Importer un fichier bancaire » dans l'admin Django
+  - [x] Mise à jour de `import_bank_file` pour ajouter les options de mapping
+  - [x] Test via `import_bank_file` avec un fichier bancaire
 
 ### 🚧 Phase 3 : Interface web (À VENIR)
 
@@ -421,7 +419,7 @@ python manage.py changepassword ton_username
 > Avec le normaliseur paramétrable (Phase 2) et l'API (Phase 4), ces valeurs deviennent
 > configurables par le client. En attendant, l'import par commande suppose ce qui suit.
 
-- **Ligne de début :** 9 (configurable avec `--start-row`)
+- **Ligne de début :** 10 (configurable avec `--start-row`)
 - **Colonnes requises après normalisation :**
   - `Date` : Format français DD/MM/YYYY
   - `Libellé` : Description de la transaction
