@@ -4,6 +4,11 @@
   "termine": false,
   "contexte": "personnel",
   "screenshot": "",
-  "technologies": ["Python", "Django", "SQLite"],
-  "competences": ["REST API"]
+  "technologies": ["Python", "Django", "Django REST Framework", "Pandas", "SQLite"],
+  "competences": [
+    "Conception d'une API REST avec Django REST Framework",
+    "Traitement et normalisation de fichiers bancaires (CSV / Excel) avec Pandas",
+    "Modélisation de données métier",
+    "Architecture en couches (API découplée du frontend)"
+  ]
 }
