@@ -1,3 +1,5 @@
+from datetime import date as date_type
+
 from django.db.models import Sum, Q
 from rest_framework import status
 from rest_framework.decorators import action
@@ -7,45 +9,102 @@ from rest_framework.viewsets import ViewSet
 from .models import Transaction
 
 
+def _validate_dates(start_str, end_str):
+    """Validates and converts two YYYY-MM-DD strings. Raises ValueError if invalid."""
+    try:
+        start = date_type.fromisoformat(start_str)
+    except ValueError:
+        raise ValueError(f"Invalid format for 'start': '{start_str}'. Use YYYY-MM-DD.")
+    try:
+        end = date_type.fromisoformat(end_str)
+    except ValueError:
+        raise ValueError(f"Invalid format for 'end': '{end_str}'. Use YYYY-MM-DD.")
+    if end < start:
+        raise ValueError("'end' cannot be earlier than 'start'.")
+    return start, end
+
+
 class TransactionViewSet(ViewSet):
 
-    @action(detail=False, methods=["get"], url_path="synthese")
-    def synthese(self, request):
-        debut = request.query_params.get("debut")
-        fin = request.query_params.get("fin")
+    def list(self, request):
+        start = request.query_params.get("start")
+        end = request.query_params.get("end")
+        category_id = request.query_params.get("category")
 
-        if not debut or not fin:
+        queryset = Transaction.objects.select_related("category").order_by("-date")
+
+        if start or end:
+            if not (start and end):
+                return Response(
+                    {"error": "'start' and 'end' must be provided together (format YYYY-MM-DD)."},
+                    status=status.HTTP_400_BAD_REQUEST,
+                )
+            try:
+                start_date, end_date = _validate_dates(start, end)
+            except ValueError as e:
+                return Response({"error": str(e)}, status=status.HTTP_400_BAD_REQUEST)
+            queryset = queryset.filter(date__range=[start_date, end_date])
+
+        if category_id:
+            queryset = queryset.filter(category_id=category_id)
+
+        transactions = [
+            {
+                "id": t.id,
+                "date": t.date,
+                "label": t.label,
+                "amount": t.amount,
+                "category_id": t.category_id,
+                "category": t.category.name if t.category else "Uncategorized",
+            }
+            for t in queryset
+        ]
+
+        return Response({"transactions": transactions, "total": len(transactions)})
+
+    @action(detail=False, methods=["get"], url_path="summary")
+    def summary(self, request):
+        start = request.query_params.get("start")
+        end = request.query_params.get("end")
+
+        if not start or not end:
             return Response(
-                {"erreur": "Les paramètres 'debut' et 'fin' sont obligatoires (format YYYY-MM-DD)."},
+                {"error": "'start' and 'end' are required (format YYYY-MM-DD)."},
                 status=status.HTTP_400_BAD_REQUEST,
             )
 
-        qs = Transaction.objects.filter(date__range=[debut, fin])
+        try:
+            start_date, end_date = _validate_dates(start, end)
+        except ValueError as e:
+            return Response({"error": str(e)}, status=status.HTTP_400_BAD_REQUEST)
 
-        totaux = qs.aggregate(
-            total_depenses=Sum("amount", filter=Q(amount__lt=0)),
-            total_revenus=Sum("amount", filter=Q(amount__gt=0)),
+        queryset = Transaction.objects.filter(date__range=[start_date, end_date])
+
+        totals = queryset.aggregate(
+            total_expenses=Sum("amount", filter=Q(amount__lt=0)),
+            total_income=Sum("amount", filter=Q(amount__gt=0)),
         )
 
-        total_depenses = totaux["total_depenses"] or 0
-        total_revenus = totaux["total_revenus"] or 0
+        total_expenses = totals["total_expenses"] or 0
+        total_income = totals["total_income"] or 0
 
-        par_categorie = (
-            qs.values("category__name")
+        by_category = (
+            queryset.values("category__id", "category__name")
             .annotate(total=Sum("amount"))
             .order_by("total")
         )
 
         return Response({
-            "periode": {"debut": debut, "fin": fin},
-            "total_depenses": total_depenses,
-            "total_revenus": total_revenus,
-            "solde": total_revenus + total_depenses,
-            "par_categorie": [
+            "period": {"start": start_date, "end": end_date},
+            "total_expenses": total_expenses,
+            "total_income": total_income,
+            "balance": total_income + total_expenses,
+            "by_category": [
                 {
-                    "categorie": item["category__name"] or "Non catégorisé",
+                    "category_id": item["category__id"],
+                    "category": item["category__name"] or "Uncategorized",
                     "total": item["total"],
                 }
-                for item in par_categorie
+                for item in by_category
             ],
         })
