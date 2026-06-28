@@ -1,5 +1,5 @@
 from django.contrib import admin
-from .models import Category, Transaction, CategorizationRule
+from .models import Category, Transaction, CategorizationRule, Budget
 
 
 @admin.register(Category)
@@ -28,3 +28,10 @@ class CategorizationRuleAdmin(admin.ModelAdmin):
     ]
     list_filter = ["is_user_validated", "category"]
     search_fields = ["pattern"]
+
+
+@admin.register(Budget)
+class BudgetAdmin(admin.ModelAdmin):
+    list_display = ["category", "amount", "period"]
+    list_filter = ["category"]
+    date_hierarchy = "period"
