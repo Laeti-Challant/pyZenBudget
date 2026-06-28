@@ -306,10 +306,10 @@ pip freeze > requirements.txt
 
 ### 🚧 Phase 3 : Logique métier (À VENIR)
 
-- [ ] Mettre en place les calculs de totaux sur des périodes et selon des catégories
-- [ ] **Mise en place des budgets**
-  - [ ] mise en place de la table
-  - [ ] migration
+- [x] Mettre en place les calculs de totaux sur des périodes et selon des catégories
+- [x] **Mise en place des budgets**
+  - [x] mise en place de la table
+  - [x] migration
 - [ ] Complétion des categorisation_rules
 - [ ] **Mise en place de l'auto-apprentissage des categorisation_rules**
   - [ ] Moteur qui applique les CategorizationRule à l'import
