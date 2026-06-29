@@ -1,4 +1,5 @@
-from datetime import date as date_type
+import calendar
+from datetime import date as date_type, datetime
 
 from django.db.models import Sum, Q
 from rest_framework import status
@@ -6,7 +7,7 @@ from rest_framework.decorators import action
 from rest_framework.response import Response
 from rest_framework.viewsets import ViewSet
 
-from .models import Transaction
+from .models import Transaction, Budget
 
 
 def _validate_dates(start_str, end_str):
@@ -22,6 +23,18 @@ def _validate_dates(start_str, end_str):
     if end < start:
         raise ValueError("'end' cannot be earlier than 'start'.")
     return start, end
+
+
+def _parse_month(month_str):
+    """Parses 'YYYY-MM' into (first_day, last_day) of that month. Raises ValueError if invalid."""
+    try:
+        first_day = datetime.strptime(month_str, "%Y-%m").date()
+    except (ValueError, TypeError):
+        raise ValueError(f"Invalid format for 'month': '{month_str}'. Use YYYY-MM.")
+    last_day = first_day.replace(
+        day=calendar.monthrange(first_day.year, first_day.month)[1]
+    )
+    return first_day, last_day
 
 
 class TransactionViewSet(ViewSet):
@@ -107,4 +120,52 @@ class TransactionViewSet(ViewSet):
                 }
                 for item in by_category
             ],
+        })
+
+    @action(detail=False, methods=["get"], url_path="monthly")
+    def monthly(self, request):
+        month = request.query_params.get("month")
+
+        if not month:
+            return Response(
+                {"error": "'month' is required (format YYYY-MM)."},
+                status=status.HTTP_400_BAD_REQUEST,
+            )
+
+        try:
+            first_day, last_day = _parse_month(month)
+        except ValueError as e:
+            return Response({"error": str(e)}, status=status.HTTP_400_BAD_REQUEST)
+
+        # Dépensé par catégorie sur le mois (les sommes sont calculées par l'ORM).
+        # amount < 0 : on ne garde que les dépenses, pas les revenus.
+        spent_by_category = (
+            Transaction.objects.filter(
+                date__range=[first_day, last_day], amount__lt=0
+            )
+            .values("category__id", "category__name")
+            .annotate(spent=Sum("amount"))
+            .order_by("spent")  # plus grosse dépense en premier (sommes négatives)
+        )
+
+        # Budgets du mois, indexés par catégorie pour une fusion en O(1).
+        budgets = {
+            b.category_id: b.amount
+            for b in Budget.objects.filter(period=first_day)
+        }
+
+        # Assemblage de deux résultats déjà agrégés (ce n'est pas un calcul en Python).
+        by_category = [
+            {
+                "category_id": item["category__id"],
+                "category": item["category__name"] or "Uncategorized",
+                "spent": -item["spent"],  # exposé en positif
+                "budget": budgets.get(item["category__id"]),
+            }
+            for item in spent_by_category
+        ]
+
+        return Response({
+            "month": first_day.strftime("%Y-%m"),
+            "by_category": by_category,
         })
