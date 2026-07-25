@@ -8,7 +8,7 @@ from rest_framework.decorators import action
 from rest_framework.response import Response
 from rest_framework.viewsets import ViewSet
 
-from .models import Transaction, Budget
+from .models import Transaction, Budget, Category, CategorizationRule
 
 
 def _validate_dates(start_str, end_str):
@@ -201,6 +201,58 @@ class TransactionViewSet(ViewSet):
             "pattern": pattern,
             "transactions": transactions,
             "total": len(transactions),
+        })
+
+    @action(detail=False, methods=["post"], url_path="categorize")
+    def categorize(self, request):
+        category_id = request.data.get("category_id")
+        pattern = request.data.get("pattern")
+        validated_ids = request.data.get("validated_ids", [])
+        rejected_ids = request.data.get("rejected_ids", [])
+
+        if not category_id or not pattern:
+            return Response(
+                {"error": "'category_id' and 'pattern' are required."},
+                status=status.HTTP_400_BAD_REQUEST,
+            )
+
+        try:
+            category = Category.objects.get(id=category_id)
+        except Category.DoesNotExist:
+            return Response(
+                {"error": f"Category '{category_id}' does not exist."},
+                status=status.HTTP_400_BAD_REQUEST,
+            )
+
+        # Ne touche que les transactions encore non catégorisées (garde-fou).
+        Transaction.objects.filter(
+            id__in=validated_ids, category__isnull=True
+        ).update(category=category, is_validated=True)
+
+        rule, _ = CategorizationRule.objects.get_or_create(
+            pattern=pattern, defaults={"category": category}
+        )
+        rule.usage_count += len(validated_ids)
+        rule.rejected_count += len(rejected_ids)
+
+        # Pas de recalcul tant qu'aucune validation ni rejet n'a eu lieu (division par zéro).
+        total = rule.usage_count + rule.rejected_count
+        if total > 0:
+            rule.confidence = rule.usage_count / total
+
+        rule.is_user_validated = True
+        rule.save()
+
+        return Response({
+            "validated_count": len(validated_ids),
+            "rejected_count": len(rejected_ids),
+            "rule": {
+                "pattern": rule.pattern,
+                "category_id": rule.category_id,
+                "confidence": rule.confidence,
+                "usage_count": rule.usage_count,
+                "rejected_count": rule.rejected_count,
+            },
         })
 
     @action(detail=False, methods=["get"], url_path="yearly")
