@@ -66,6 +66,16 @@ class Transaction(models.Model):
     # L'utilisateur a-t-il validé cette catégorisation ?
     is_validated = models.BooleanField(default=False, verbose_name="Validée")
 
+    # Règle ayant catégorisé automatiquement cette transaction (traçabilité, ex-post pour le tri par confiance)
+    applied_rule = models.ForeignKey(
+        "CategorizationRule",
+        on_delete=models.SET_NULL,
+        null=True,
+        blank=True,
+        related_name="applied_transactions",
+        verbose_name="Règle appliquée",
+    )
+
     # Pour détecter les doublons
     import_hash = models.CharField(
         max_length=32, unique=True, verbose_name="Hash d'import"
