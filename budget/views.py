@@ -8,7 +8,11 @@ from rest_framework.decorators import action
 from rest_framework.response import Response
 from rest_framework.viewsets import ViewSet
 
-from .models import Transaction, Budget
+from .models import Transaction, Budget, Category, CategorizationRule
+
+# En dessous de ce seuil, une catégorisation automatique est considérée peu fiable
+# et remontée dans l'endpoint "review" même si une règle a matché.
+LOW_CONFIDENCE_THRESHOLD = 0.2
 
 
 def _validate_dates(start_str, end_str):
@@ -169,6 +173,116 @@ class TransactionViewSet(ViewSet):
         return Response({
             "month": first_day.strftime("%Y-%m"),
             "by_category": by_category,
+        })
+
+    @action(detail=False, methods=["get"], url_path="review")
+    def review(self, request):
+        # Pas encore catégorisée, ou catégorisée automatiquement mais peu fiable.
+        # NULL (pas de règle appliquée) est trié en premier par SQLite en ordre ascendant,
+        # donc les non catégorisées passent avant les peu sûres.
+        queryset = Transaction.objects.filter(
+            Q(category__isnull=True) | Q(applied_rule__confidence__lt=LOW_CONFIDENCE_THRESHOLD),
+            is_validated=False,
+        ).order_by("applied_rule__confidence")
+
+        transactions = [
+            {
+                "id": t.id,
+                "date": t.date,
+                "label": t.label,
+                "amount": t.amount,
+                "category_id": t.category_id,
+                "category": t.category.name if t.category else "Uncategorized",
+                "applied_rule": t.applied_rule.pattern if t.applied_rule else None,
+                "confidence": t.applied_rule.confidence if t.applied_rule else None,
+            }
+            for t in queryset
+        ]
+
+        return Response({"transactions": transactions, "total": len(transactions)})
+
+    @action(detail=False, methods=["get"], url_path="matches")
+    def matches(self, request):
+        pattern = request.query_params.get("pattern")
+
+        if not pattern:
+            return Response(
+                {"error": "'pattern' is required."},
+                status=status.HTTP_400_BAD_REQUEST,
+            )
+
+        # Transactions pas encore catégorisées dont le libellé contient le terme
+        # (icontains = sous-chaîne, insensible à la casse).
+        queryset = Transaction.objects.filter(
+            category__isnull=True, label__icontains=pattern
+        )
+
+        transactions = [
+            {
+                "id": t.id,
+                "date": t.date,
+                "label": t.label,
+                "amount": t.amount,
+            }
+            for t in queryset
+        ]
+
+        return Response({
+            "pattern": pattern,
+            "transactions": transactions,
+            "total": len(transactions),
+        })
+
+    @action(detail=False, methods=["post"], url_path="categorize")
+    def categorize(self, request):
+        category_id = request.data.get("category_id")
+        pattern = request.data.get("pattern")
+        validated_ids = request.data.get("validated_ids", [])
+        rejected_ids = request.data.get("rejected_ids", [])
+
+        if not category_id or not pattern:
+            return Response(
+                {"error": "'category_id' and 'pattern' are required."},
+                status=status.HTTP_400_BAD_REQUEST,
+            )
+
+        try:
+            category = Category.objects.get(id=category_id)
+        except Category.DoesNotExist:
+            return Response(
+                {"error": f"Category '{category_id}' does not exist."},
+                status=status.HTTP_400_BAD_REQUEST,
+            )
+
+        # Ne touche que les transactions encore non catégorisées (garde-fou).
+        Transaction.objects.filter(
+            id__in=validated_ids, category__isnull=True
+        ).update(category=category, is_validated=True)
+
+        rule, _ = CategorizationRule.objects.get_or_create(
+            pattern=pattern, defaults={"category": category}
+        )
+        rule.usage_count += len(validated_ids)
+        rule.rejected_count += len(rejected_ids)
+
+        # Pas de recalcul tant qu'aucune validation ni rejet n'a eu lieu (division par zéro).
+        total = rule.usage_count + rule.rejected_count
+        if total > 0:
+            rule.confidence = rule.usage_count / total
+
+        rule.is_user_validated = True
+        rule.save()
+
+        return Response({
+            "validated_count": len(validated_ids),
+            "rejected_count": len(rejected_ids),
+            "rule": {
+                "pattern": rule.pattern,
+                "category_id": rule.category_id,
+                "confidence": rule.confidence,
+                "usage_count": rule.usage_count,
+                "rejected_count": rule.rejected_count,
+            },
         })
 
     @action(detail=False, methods=["get"], url_path="yearly")
