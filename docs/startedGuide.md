@@ -9,6 +9,30 @@ il me permet de me replonger vite dans le projet.
 
 ## 🧭 Journal de bord
 
+### Juillet 2026 : fin de la Phase 3 (logique métier)
+
+Endpoints `summary`, `monthly` et `yearly` ajoutés pour les totaux par période/catégorie,
+avec les budgets mensuels en base (table + migration).
+
+Complétion des `categorisation_rules` : `rejected_count` ajouté au modèle en plus de
+`usage_count`, pour calculer un score de confiance (`usage_count / (usage_count + rejected_count)`,
+recalculé seulement à partir du premier événement pour éviter la division par zéro).
+
+Deux endpoints pour le flux de validation manuelle : `matches` (cherche les transactions
+non catégorisées correspondant à un pattern) et `categorize` (soumet les transactions
+validées/rejetées, met à jour la règle en conséquence).
+
+Auto-apprentissage : `CategorizationRule.best_match(label)` cherche la meilleure règle
+correspondante (tie-break par confiance puis usage), branché dans `excel_importer.py`
+pour catégoriser automatiquement à l'import (sans valider, `applied_rule` trace quelle
+règle a été utilisée). Endpoint `review` ajouté pour lister ce qui reste à vérifier
+(non catégorisé, ou catégorisé avec une confiance sous `LOW_CONFIDENCE_THRESHOLD`).
+
+Décision actée : l'authentification multi-utilisateurs reste reportée à la Phase 8,
+comme prévu initialement (aucun modèle n'a de FK `user` pour l'instant).
+
+Phase 3 terminée. Prochaine étape : l'interface (Phase 4), dans le dépôt front séparé.
+
 ### Mai 2026 : passage de MVT à une API
 
 Le projet a démarré en MVT pour explorer Django. En attaquant les vues,
@@ -206,13 +230,15 @@ pyZenBudget/
 - Lien vers catégorie
 - Statut de validation utilisateur
 - **Gestion des doublons via compteur d'occurrence**
+- Lien vers la `CategorizationRule` qui l'a catégorisée automatiquement (`applied_rule`, traçabilité)
 
 ### CategorizationRule
 
 - Règles de catégorisation automatique
 - Pattern (mot-clé) → Catégorie
-- Score de confiance
-- Compteur d'utilisation
+- Score de confiance (recalculé à chaque validation/rejet, tant qu'au moins un des deux a eu lieu)
+- Compteur d'utilisation (validations) et compteur de rejets
+- `best_match(label)` : trouve la règle la plus fiable dont le pattern est contenu dans un libellé donné (insensible à la casse), utilisée à l'import
 
 ### ImportProfile (prévu, Phase 4)
 
@@ -304,18 +330,18 @@ pip freeze > requirements.txt
   - [x] Mise à jour de `import_bank_file` pour ajouter les options de mapping
   - [x] Test via `import_bank_file` avec un fichier bancaire
 
-### 🚧 Phase 3 : Logique métier (À VENIR)
+### ✅ Phase 3 : Logique métier (Terminé)
 
 - [x] Mettre en place les calculs de totaux sur des périodes et selon des catégories
 - [x] **Mise en place des budgets**
   - [x] mise en place de la table
   - [x] migration
-- [ ] Complétion des categorisation_rules
-- [ ] **Mise en place de l'auto-apprentissage des categorisation_rules**
-  - [ ] Moteur qui applique les CategorizationRule à l'import
-  - [ ] Score de confiance
-  - [ ] Tri de la liste : transactions non catégorisées ou peu sûres renvoyées en tête
-  - [ ] Apprentissage : création/mise à jour d'une règle à chaque correction de l'utilisateur
+- [x] Complétion des categorisation_rules
+- [x] **Mise en place de l'auto-apprentissage des categorisation_rules**
+  - [x] Moteur qui applique les CategorizationRule à l'import
+  - [x] Score de confiance
+  - [x] Tri de la liste : transactions non catégorisées ou peu sûres renvoyées en tête
+  - [x] Apprentissage : création/mise à jour d'une règle à chaque correction de l'utilisateur
 
 ### 📅 Phase 4 : Interface web (À VENIR)
 
