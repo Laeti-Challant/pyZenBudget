@@ -171,6 +171,38 @@ class TransactionViewSet(ViewSet):
             "by_category": by_category,
         })
 
+    @action(detail=False, methods=["get"], url_path="matches")
+    def matches(self, request):
+        pattern = request.query_params.get("pattern")
+
+        if not pattern:
+            return Response(
+                {"error": "'pattern' is required."},
+                status=status.HTTP_400_BAD_REQUEST,
+            )
+
+        # Transactions pas encore catégorisées dont le libellé contient le terme
+        # (icontains = sous-chaîne, insensible à la casse).
+        queryset = Transaction.objects.filter(
+            category__isnull=True, label__icontains=pattern
+        )
+
+        transactions = [
+            {
+                "id": t.id,
+                "date": t.date,
+                "label": t.label,
+                "amount": t.amount,
+            }
+            for t in queryset
+        ]
+
+        return Response({
+            "pattern": pattern,
+            "transactions": transactions,
+            "total": len(transactions),
+        })
+
     @action(detail=False, methods=["get"], url_path="yearly")
     def yearly(self, request):
         year_str = request.query_params.get("year")
