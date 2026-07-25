@@ -10,6 +10,10 @@ from rest_framework.viewsets import ViewSet
 
 from .models import Transaction, Budget, Category, CategorizationRule
 
+# En dessous de ce seuil, une catégorisation automatique est considérée peu fiable
+# et remontée dans l'endpoint "review" même si une règle a matché.
+LOW_CONFIDENCE_THRESHOLD = 0.2
+
 
 def _validate_dates(start_str, end_str):
     """Validates and converts two YYYY-MM-DD strings. Raises ValueError if invalid."""
@@ -170,6 +174,32 @@ class TransactionViewSet(ViewSet):
             "month": first_day.strftime("%Y-%m"),
             "by_category": by_category,
         })
+
+    @action(detail=False, methods=["get"], url_path="review")
+    def review(self, request):
+        # Pas encore catégorisée, ou catégorisée automatiquement mais peu fiable.
+        # NULL (pas de règle appliquée) est trié en premier par SQLite en ordre ascendant,
+        # donc les non catégorisées passent avant les peu sûres.
+        queryset = Transaction.objects.filter(
+            Q(category__isnull=True) | Q(applied_rule__confidence__lt=LOW_CONFIDENCE_THRESHOLD),
+            is_validated=False,
+        ).order_by("applied_rule__confidence")
+
+        transactions = [
+            {
+                "id": t.id,
+                "date": t.date,
+                "label": t.label,
+                "amount": t.amount,
+                "category_id": t.category_id,
+                "category": t.category.name if t.category else "Uncategorized",
+                "applied_rule": t.applied_rule.pattern if t.applied_rule else None,
+                "confidence": t.applied_rule.confidence if t.applied_rule else None,
+            }
+            for t in queryset
+        ]
+
+        return Response({"transactions": transactions, "total": len(transactions)})
 
     @action(detail=False, methods=["get"], url_path="matches")
     def matches(self, request):
