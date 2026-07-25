@@ -126,3 +126,35 @@ class CategorizationRule(models.Model):
 
     def __str__(self):
         return f"{self.pattern} → {self.category.name} ({self.confidence})"
+
+
+class Budget(models.Model):
+    """Plafond de dépenses mensuel par catégorie.
+
+    `period` contient toujours le 1er du mois (ex: 2026-06-01 pour juin 2026).
+    """
+
+    category = models.ForeignKey(
+        Category,
+        on_delete=models.PROTECT,
+        related_name="budgets",
+        verbose_name="Catégorie",
+    )
+
+    amount = models.DecimalField(
+        max_digits=10, decimal_places=2, verbose_name="Plafond mensuel"
+    )
+
+    period = models.DateField(verbose_name="Mois (1er du mois)")
+
+    created_at = models.DateTimeField(auto_now_add=True)
+    updated_at = models.DateTimeField(auto_now=True)
+
+    class Meta:
+        verbose_name = "Budget"
+        verbose_name_plural = "Budgets"
+        unique_together = [["category", "period"]]
+        ordering = ["-period"]
+
+    def __str__(self):
+        return f"{self.category.name} : {self.amount}€ ({self.period.strftime('%B %Y')})"
