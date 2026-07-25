@@ -117,6 +117,9 @@ class CategorizationRule(models.Model):
     # Nombre de fois où la règle a été utilisée
     usage_count = models.IntegerField(default=0, verbose_name="Nombre d'utilisations")
 
+    # Nombre de fois où une transaction proposée par la règle a été rejetée (case décochée)
+    rejected_count = models.IntegerField(default=0, verbose_name="Nombre de rejets")
+
     created_at = models.DateTimeField(auto_now_add=True)
 
     class Meta:
