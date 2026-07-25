@@ -343,19 +343,21 @@ pip freeze > requirements.txt
   - [x] Tri de la liste : transactions non catégorisées ou peu sûres renvoyées en tête
   - [x] Apprentissage : création/mise à jour d'une règle à chaque correction de l'utilisateur
 
-### 📅 Phase 4 : Interface web (À VENIR)
+### 🚧 Phase 4 : Interface web (En cours)
 
 > 📌 Remplace l'interface web en MVT initialement prévue (voir Journal de bord).
 > Les écrans (upload, liste, validation, dashboard) sont désormais dans le dépôt du front.
 
-- [ ] Installer et configurer Django REST Framework
-- [ ] Serializers des modèles (Category, Transaction, CategorizationRule)
-- [ ] ViewSets en lecture seule + router
-- [ ] Configurer CORS (django-cors-headers) pour autoriser les clients web
-- [ ] Tester dans l'API navigable et Postman
-- [ ] (Authentification différée : mono-utilisateur pour l'instant, voir Phase 8)
+- [x] Installer et configurer Django REST Framework
+- [ ] Serializers des modèles (Category, Transaction, CategorizationRule) — les vues actuelles construisent les réponses à la main (dicts), pas encore de `serializers.py`
+- [x] ViewSets + router (`TransactionViewSet`, `DefaultRouter` dans `config/urls.py`). Pas en lecture seule : des actions d'écriture existent déjà (`categorize`)
+- [ ] Configurer CORS (`django-cors-headers`) — pas encore fait, bloquant dès que le front tournera sur une origine différente (autre port)
+- [x] Testé informellement via curl et l'API navigable DRF pendant le développement (pas de collection Postman formalisée)
+- [x] (Authentification différée : mono-utilisateur pour l'instant, voir Phase 8) — confirmé le 2026-07-25
 
-### 📅 Phase 5 : Import flexible (endpoints) (À VENIR)
+**Décision front (2026-07-25)** : Next.js plutôt que React seul, pour la simplicité du routing (fichier-based) et une formation Next récente. Objectif assumé : une application simple, pas de recherche de perfection technique. Pas de besoin de SSR/App Router avancé identifié pour l'instant, usage prévu en composants client classiques (fetch vers l'API Django).
+
+### 📅 Phase 5 : Import flexible (endpoints) (Probablement abandonné pour la version Python)
 
 Expose le normaliseur paramétrable (Phase 2) via l'API, pour que n'importe quel client
 puisse importer un fichier en définissant son mapping.
@@ -364,11 +366,15 @@ puisse importer un fichier en définissant son mapping.
 - [ ] Endpoint d'import qui applique le mapping fourni par le client
 - [ ] Modèle `ImportProfile` pour mémoriser et réutiliser un mapping (banque récurrente)
 
+**Décision (2026-07-25)** : pas de changement de banque prévu, la commande dev `import_bank_file` reste suffisante pour l'usage réel. Cette phase serait de toute façon différente sur une version Java du projet, pas d'intérêt à l'investir maintenant côté Python. Reste ici pour mémoire, à reconsidérer seulement si un besoin concret apparaît.
+
 ### 📅 Phase 6 : Catégories et sous-catégories (endpoints) (À VENIR)
 
 - [ ] Endpoints CRUD des catégories (hiérarchie parent/enfant)
 - [ ] Endpoint d'affectation d'une catégorie à une transaction (PATCH)
 - [ ] Liste des transactions : filtrage (date, catégorie, validation), pagination, recherche par libellé
+
+**Note (2026-07-25)** : intérêt confirmé pour creuser les sous-catégories. Le champ `parent` (auto-référence) existe déjà sur `Category`, pas encore exploité par une vue. Bon candidat pour la suite après l'interface.
 
 ### 📊 Phase 7 : Rapports et exports (endpoints) (À VENIR)
 
