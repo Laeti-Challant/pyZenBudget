@@ -94,7 +94,7 @@ class TransactionImporter:
         Returns:
             (nombre créées, nombre doublons)
         """
-        from budget.models import Transaction
+        from budget.models import Transaction, CategorizationRule
 
         transactions = self.prepare_transactions()
 
@@ -103,6 +103,11 @@ class TransactionImporter:
 
         for trans_data in transactions:
             try:
+                rule = CategorizationRule.best_match(trans_data["label"])
+                if rule:
+                    trans_data["category"] = rule.category
+                    trans_data["applied_rule"] = rule
+
                 transaction, created = Transaction.objects.get_or_create(
                     import_hash=trans_data["import_hash"], defaults=trans_data
                 )

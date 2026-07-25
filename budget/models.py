@@ -140,6 +140,17 @@ class CategorizationRule(models.Model):
     def __str__(self):
         return f"{self.pattern} → {self.category.name} ({self.confidence})"
 
+    @classmethod
+    def best_match(cls, label):
+        """Renvoie la règle la plus fiable dont le pattern est contenu dans le libellé
+        (insensible à la casse), ou None si aucune ne correspond.
+        L'ordre par défaut (-confidence, -usage_count) fait déjà le tie-break."""
+        label_lower = label.lower()
+        for rule in cls.objects.all():
+            if rule.pattern.lower() in label_lower:
+                return rule
+        return None
+
 
 class Budget(models.Model):
     """Plafond de dépenses mensuel par catégorie.
