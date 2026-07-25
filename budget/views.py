@@ -2,6 +2,7 @@ import calendar
 from datetime import date as date_type, datetime
 
 from django.db.models import Sum, Q
+from django.db.models.functions import TruncMonth
 from rest_framework import status
 from rest_framework.decorators import action
 from rest_framework.response import Response
@@ -168,4 +169,91 @@ class TransactionViewSet(ViewSet):
         return Response({
             "month": first_day.strftime("%Y-%m"),
             "by_category": by_category,
+        })
+
+    @action(detail=False, methods=["get"], url_path="yearly")
+    def yearly(self, request):
+        year_str = request.query_params.get("year")
+
+        if not year_str:
+            return Response(
+                {"error": "'year' is required (format YYYY)."},
+                status=status.HTTP_400_BAD_REQUEST,
+            )
+
+        try:
+            year = int(year_str)
+            if not (1900 <= year <= 9999):
+                raise ValueError
+        except (ValueError, TypeError):
+            return Response(
+                {"error": f"Invalid format for 'year': '{year_str}'. Use YYYY."},
+                status=status.HTTP_400_BAD_REQUEST,
+            )
+
+        first_day = date_type(year, 1, 1)
+        last_day = date_type(year, 12, 31)
+
+        # Dépensé par (mois, catégorie) en UNE seule requête (TruncMonth groupe par mois).
+        spent_rows = (
+            Transaction.objects.filter(
+                date__range=[first_day, last_day], amount__lt=0
+            )
+            .annotate(month=TruncMonth("date"))
+            .values("month", "category__id", "category__name")
+            .annotate(spent=Sum("amount"))
+            .order_by("month", "spent")
+        )
+
+        # Budgets de l'année : indexés par (mois, catégorie) pour le détail mensuel,
+        # et sommés par catégorie pour le budget annuel (agrégat des mensuels).
+        budget_by_month_cat = {}
+        annual_budget_by_cat = {}
+        cat_names = {}
+        for b in Budget.objects.filter(period__year=year).select_related("category"):
+            budget_by_month_cat[(b.period.month, b.category_id)] = b.amount
+            annual_budget_by_cat[b.category_id] = (
+                annual_budget_by_cat.get(b.category_id, 0) + b.amount
+            )
+            cat_names[b.category_id] = b.category.name
+
+        # 12 mois toujours présents (pour le graphe), même vides.
+        months = {m: [] for m in range(1, 13)}
+        annual_spent_by_cat = {}
+
+        # Assemblage des résultats déjà agrégés (pas un recalcul transaction par transaction).
+        for row in spent_rows:
+            m = row["month"].month
+            cat_id = row["category__id"]
+            spent = -row["spent"]  # exposé en positif
+            months[m].append({
+                "category_id": cat_id,
+                "category": row["category__name"] or "Uncategorized",
+                "spent": spent,
+                "budget": budget_by_month_cat.get((m, cat_id)),
+            })
+            annual_spent_by_cat[cat_id] = annual_spent_by_cat.get(cat_id, 0) + spent
+            cat_names.setdefault(cat_id, row["category__name"] or "Uncategorized")
+
+        total_by_category = sorted(
+            (
+                {
+                    "category_id": cat_id,
+                    "category": cat_names.get(cat_id) or "Uncategorized",
+                    "spent": spent,
+                    "budget": annual_budget_by_cat.get(cat_id),
+                }
+                for cat_id, spent in annual_spent_by_cat.items()
+            ),
+            key=lambda item: item["spent"],
+            reverse=True,  # plus grosse dépense annuelle en premier
+        )
+
+        return Response({
+            "year": year,
+            "total": {"by_category": total_by_category},
+            "months": [
+                {"month": f"{year}-{m:02d}", "by_category": months[m]}
+                for m in range(1, 13)
+            ],
         })
