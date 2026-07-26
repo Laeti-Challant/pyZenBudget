@@ -349,9 +349,9 @@ pip freeze > requirements.txt
 > Les écrans (upload, liste, validation, dashboard) sont désormais dans le dépôt du front.
 
 - [x] Installer et configurer Django REST Framework
-- [ ] Serializers des modèles (Category, Transaction, CategorizationRule) — les vues actuelles construisent les réponses à la main (dicts), pas encore de `serializers.py`
+- [x] Serializers des modèles (Category, Transaction, CategorizationRule) — les vues actuelles construisent les réponses à la main (dicts), pas encore de `serializers.py`
 - [x] ViewSets + router (`TransactionViewSet`, `DefaultRouter` dans `config/urls.py`). Pas en lecture seule : des actions d'écriture existent déjà (`categorize`)
-- [ ] Configurer CORS (`django-cors-headers`) — pas encore fait, bloquant dès que le front tournera sur une origine différente (autre port)
+- [x] Configurer CORS (`django-cors-headers`) — pas encore fait, bloquant dès que le front tournera sur une origine différente (autre port)
 - [x] Testé informellement via curl et l'API navigable DRF pendant le développement (pas de collection Postman formalisée)
 - [x] (Authentification différée : mono-utilisateur pour l'instant, voir Phase 8) — confirmé le 2026-07-25
 
