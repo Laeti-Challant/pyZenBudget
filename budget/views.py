@@ -9,6 +9,7 @@ from rest_framework.response import Response
 from rest_framework.viewsets import ViewSet
 
 from .models import Transaction, Budget, Category, CategorizationRule
+from .serializers import TransactionSerializer, TransactionReviewSerializer, CategorizationRuleSerializer
 
 # En dessous de ce seuil, une catégorisation automatique est considérée peu fiable
 # et remontée dans l'endpoint "review" même si une règle a matché.
@@ -66,17 +67,7 @@ class TransactionViewSet(ViewSet):
         if category_id:
             queryset = queryset.filter(category_id=category_id)
 
-        transactions = [
-            {
-                "id": t.id,
-                "date": t.date,
-                "label": t.label,
-                "amount": t.amount,
-                "category_id": t.category_id,
-                "category": t.category.name if t.category else "Uncategorized",
-            }
-            for t in queryset
-        ]
+        transactions = TransactionSerializer(queryset, many=True).data
 
         return Response({"transactions": transactions, "total": len(transactions)})
 
@@ -185,19 +176,7 @@ class TransactionViewSet(ViewSet):
             is_validated=False,
         ).order_by("applied_rule__confidence")
 
-        transactions = [
-            {
-                "id": t.id,
-                "date": t.date,
-                "label": t.label,
-                "amount": t.amount,
-                "category_id": t.category_id,
-                "category": t.category.name if t.category else "Uncategorized",
-                "applied_rule": t.applied_rule.pattern if t.applied_rule else None,
-                "confidence": t.applied_rule.confidence if t.applied_rule else None,
-            }
-            for t in queryset
-        ]
+        transactions = TransactionReviewSerializer(queryset, many=True).data
 
         return Response({"transactions": transactions, "total": len(transactions)})
 
@@ -217,15 +196,7 @@ class TransactionViewSet(ViewSet):
             category__isnull=True, label__icontains=pattern
         )
 
-        transactions = [
-            {
-                "id": t.id,
-                "date": t.date,
-                "label": t.label,
-                "amount": t.amount,
-            }
-            for t in queryset
-        ]
+        transactions = TransactionSerializer(queryset, many=True).data
 
         return Response({
             "pattern": pattern,
@@ -276,13 +247,7 @@ class TransactionViewSet(ViewSet):
         return Response({
             "validated_count": len(validated_ids),
             "rejected_count": len(rejected_ids),
-            "rule": {
-                "pattern": rule.pattern,
-                "category_id": rule.category_id,
-                "confidence": rule.confidence,
-                "usage_count": rule.usage_count,
-                "rejected_count": rule.rejected_count,
-            },
+            "rule": CategorizationRuleSerializer(rule).data,
         })
 
     @action(detail=False, methods=["get"], url_path="yearly")
