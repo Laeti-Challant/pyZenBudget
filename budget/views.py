@@ -9,7 +9,7 @@ from rest_framework.response import Response
 from rest_framework.viewsets import ViewSet
 
 from .models import Transaction, Budget, Category, CategorizationRule
-from .serializers import TransactionSerializer, CategorizationRuleSerializer
+from .serializers import TransactionSerializer, TransactionReviewSerializer, CategorizationRuleSerializer
 
 # En dessous de ce seuil, une catégorisation automatique est considérée peu fiable
 # et remontée dans l'endpoint "review" même si une règle a matché.
@@ -176,19 +176,7 @@ class TransactionViewSet(ViewSet):
             is_validated=False,
         ).order_by("applied_rule__confidence")
 
-        transactions = [
-            {
-                "id": t.id,
-                "date": t.date,
-                "label": t.label,
-                "amount": t.amount,
-                "category_id": t.category_id,
-                "category": t.category.name if t.category else "Uncategorized",
-                "applied_rule": t.applied_rule.pattern if t.applied_rule else None,
-                "confidence": t.applied_rule.confidence if t.applied_rule else None,
-            }
-            for t in queryset
-        ]
+        transactions = TransactionReviewSerializer(queryset, many=True).data
 
         return Response({"transactions": transactions, "total": len(transactions)})
 
