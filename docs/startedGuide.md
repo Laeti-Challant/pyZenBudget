@@ -9,6 +9,78 @@ il me permet de me replonger vite dans le projet.
 
 ## 🧭 Journal de bord
 
+### 28 juillet 2026 : Phase 1 du cadrage front, liste définitive des écrans
+
+Suite directe de la session du 26 juillet : à partir de l'inventaire fonctionnel déjà
+posé, discussion écran par écran pour arriver à une liste définitive, avant les
+maquettes basse fidélité.
+
+**Écrans actés (4, au lieu des 6 pressentis au départ, grâce à deux fusions) :**
+- **Dashboard** : section annuelle + onglets mensuels, filtre par catégorie intégré.
+  La comparaison à date équivalente est écartée du v1 (jugée trop lourde à intégrer
+  avant d'avoir vécu avec les onglets mensuels), notée pour réévaluation après usage
+  réel, dans le même esprit que la Phase 6 réactivée seulement une fois le besoin
+  confirmé en pratique
+- **Transactions** : liste paginée, filtres catégorie/montant/mois, catégorisation
+  manuelle via une fenêtre modale (plutôt qu'en édition directe dans le tableau, pour
+  éviter les recatégorisations accidentelles par mis-clic)
+- **Import/Révision** : fusion actée. Clic Import depuis le Dashboard -> formulaire
+  d'upload -> une fois le fichier lu, redirection automatique vers la page de
+  Révision (transactions à faible confiance issues de cet import). Cette page reste
+  aussi accessible en permanence (menu ou lien Dashboard), pour une révision
+  ponctuelle indépendante d'un import, car `review` regarde toute la base et pas
+  seulement le dernier import
+- **Catégories** : fusion avec Budgets actée. Arborescence dépliable (catégorie
+  parente + sous-catégories dessous, jugée plus visuelle qu'une liste à plat avec
+  colonne "Parent"), indicateur "charge fixe" par ligne, CRUD catégories. Budgets
+  accrochés au même écran (CRUD, seuil d'alerte), car un budget est toujours rattaché
+  à une catégorie
+
+**Idée remontée pour la Phase 6 (implémentation API, pas encore tranchée) :** traiter
+une recatégorisation manuelle depuis l'écran Transactions comme un rejet implicite de
+la règle de catégorisation automatique appliquée (baisse de `confidence`), plutôt que
+comme une simple réaffectation neutre. À trancher au moment de construire l'endpoint
+`PATCH` d'affectation de catégorie.
+
+Prochaine étape : maquettes basse fidélité (Figma, méthode déjà validée : formes
+natives + composants perso, pas de kit UI externe).
+
+### 26 juillet 2026 : cadrage fonctionnel du front, avant tout développement
+
+Session de conception (pas de code), pour lister les fonctionnalités voulues avant de
+se lancer dans les maquettes et le développement Next.js, plutôt que de repartir "à
+l'envers" comme au début du projet (voir Mai 2026 ci-dessous).
+
+**Fonctionnalités déjà couvertes par l'API existante (travail front seul) :**
+- Agrégations par catégorie (`summary`, `monthly`, `yearly`)
+- Dashboard annuel avec zoom mois/catégorie (`yearly` contient déjà le détail)
+- Recherche par catégorie (paramètre `category` sur la liste des transactions)
+- Comparaison à date équivalente (deux appels `summary` avec des plages différentes, calcul front)
+- Validation des catégorisations automatiques (`review`, `matches`, `categorize` fonctionnels, il ne manque que l'écran)
+
+**Nouveau périmètre API identifié :**
+- Pagination de la liste des transactions (`DRF PageNumberPagination`, `list()` est actuellement écrit à la main)
+- Endpoint `POST` d'upload de fichier bancaire pour le front, format fixe uniquement (pas de mapping flexible, voir Phase 5)
+- CRUD Catégorie, avec choix d'un `parent` à la création (aucun endpoint n'existe aujourd'hui)
+- CRUD Budget (aucun endpoint n'existe aujourd'hui)
+- Filtre par montant (min/max) sur la liste des transactions
+- Paramètre `month=YYYY-MM` direct sur la liste des transactions (cohérent avec `monthly`/`yearly`)
+- Champ "seuil d'alerte" (stocké côté API, partagé) probablement sur `Budget`
+- Champ booléen "charge fixe" sur `Category` (utilisable au niveau sous-catégorie), pour distinguer les charges qui reviennent tous les mois (loyer, assurances) du reste
+
+**Mis de côté volontairement, pas dans ce périmètre :**
+- Détection automatique de récurrence (couverte par l'apprentissage des règles de catégorisation existant)
+- Transactions "hors budget" (dépenses exceptionnelles à exclure du bilan) : trop tôt, à reconsidérer après usage réel
+
+**Décisions actées :**
+- Import : reste un format fixe unique (les fichiers bancaires de Laetitia sont déjà réglés), pas d'import flexible multi-mapping. Juste exposé via un endpoint `POST` en plus de la commande CLI existante
+- Seuils d'alerte de budget : stockés côté API (partagés entre elle et son compagnon, standard si portage Java plus tard). La traduction en couleur/alerte visuelle reste côté front (logique de présentation, décision antérieure inchangée)
+- Charges fixes : indicateur posé sur la (sous-)catégorie, pas sur chaque transaction. Pas d'héritage automatique parent → enfant (une sous-catégorie comme "Assurance emprunteur" est marquée individuellement)
+- **Sous-catégories réactivées dans le scope actuel**, plus tôt que prévu par la Phase 6 (initialement reportée "après un usage réel du front"). Déclenché par la réflexion sur les charges fixes : une catégorisation grossière ("Logement") ne suffit pas à isoler les charges fixes (emprunt, assurance emprunteur, assurance maison)
+- Filtre mensuel sur la liste des transactions : paramètre `month=` direct plutôt que de faire calculer `start`/`end` au front
+
+Prochaine étape : Phase 1 de la conception (liste définitive des écrans du front), maquettes basse fidélité, puis développement du dépôt Next.js.
+
 ### Juillet 2026 : fin de la Phase 3 (logique métier)
 
 Endpoints `summary`, `monthly` et `yearly` ajoutés pour les totaux par période/catégorie,
@@ -368,13 +440,22 @@ puisse importer un fichier en définissant son mapping.
 
 **Décision (2026-07-25)** : pas de changement de banque prévu, la commande dev `import_bank_file` reste suffisante pour l'usage réel. Cette phase serait de toute façon différente sur une version Java du projet, pas d'intérêt à l'investir maintenant côté Python. Reste ici pour mémoire, à reconsidérer seulement si un besoin concret apparaît.
 
-### 📅 Phase 6 : Catégories et sous-catégories (endpoints) (À VENIR)
+**Précision (2026-07-26)** : ceci ne bloque pas un simple endpoint `POST` d'upload à format fixe pour le front (voir ci-dessous), qui est une toute autre ampleur que le mapping flexible décrit ici.
 
-- [ ] Endpoints CRUD des catégories (hiérarchie parent/enfant)
+- [ ] Endpoint `POST` d'upload de fichier bancaire, format fixe (réutilise `excel_importer.py` tel quel), pour que le front n'ait plus besoin de la ligne de commande
+
+### 📅 Phase 6 : Catégories, sous-catégories et budgets (endpoints) (À VENIR)
+
+- [ ] Endpoints CRUD des catégories (hiérarchie parent/enfant, choix du `parent` à la création)
+- [ ] Champ booléen "charge fixe" sur `Category`, posé au niveau de la (sous-)catégorie concernée, sans héritage automatique parent → enfant
+- [ ] Endpoints CRUD des budgets (aucun endpoint n'existe aujourd'hui)
+- [ ] Champ "seuil d'alerte" sur `Budget` (ou équivalent), stocké côté API pour rester partagé entre les deux utilisateurs du foyer
 - [ ] Endpoint d'affectation d'une catégorie à une transaction (PATCH)
-- [ ] Liste des transactions : filtrage (date, catégorie, validation), pagination, recherche par libellé
+- [ ] Liste des transactions : pagination (`PageNumberPagination`), paramètre `month=YYYY-MM`, filtre par montant (min/max)
 
-**Note (2026-07-25)** : intérêt confirmé pour creuser les sous-catégories. Le champ `parent` (auto-référence) existe déjà sur `Category`, pas encore exploité par une vue. Bon candidat pour la suite après l'interface.
+**Note (2026-07-25)** : intérêt confirmé pour creuser les sous-catégories. Le champ `parent` (auto-référence) existe déjà sur `Category`, pas encore exploité par une vue.
+
+**Note (2026-07-26)** : besoin confirmé plus tôt que prévu (avant même l'usage du front), suite à la réflexion sur les charges fixes : une catégorie grossière ("Logement") ne permet pas d'isoler emprunt / assurance emprunteur / assurance maison. Phase reformulée pour regrouper catégories, sous-catégories et budgets, qui doivent de toute façon avancer ensemble (le seuil d'alerte et la charge fixe s'appuient sur ces deux modèles).
 
 ### 📊 Phase 7 : Rapports et exports (endpoints) (À VENIR)
 
